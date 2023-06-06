@@ -36,7 +36,19 @@ It should work for all versions, that rely on only those four fileio functions.
 - tested backward to mob tinycc-ac9eeea   from Dez-06 2022: ok
 - tested latest      mob tinycc-a46372e   from Jun-06 2023: ok
 
+Are there prebuilt packages?
+Yes, I upload source&binary (linx x86_64 and win32) packages on a regular basis, when tcc mob updates.
 
+The source packages are derived from the normal tcc mob, so build with
 
+configure
+make
+make ziptcc
+make pkg
 
+This will produce a subdir called zipvfs-0.40.0 with all necessary files
+
+Win32:
+use win32/build-zipvfs-win32.bat -t 32 -c path-to-your-gcc\gcc.exe -i installdir (default: ziptcc-0.40.0)
+This will produce a subdir called zipvfs-0.40.0 with all necessary files
 
