@@ -14,9 +14,9 @@ All files are stored in the subdir zipvfs/
 * How to build
 First configure and build a normal tcc, to get the necessary config etc. 
 Then you just include zipl_iomap.c on the commandline of gcc (ok, and before that we need tcc.h also)
-gcc (yourflags) -include tcc.h -include zipvfs/zipl_iomap.c -DHAVE_ZIP_H -I. tcc.c -ldl -lm -lpthread -o ztcc
+  gcc (yourflags) -include tcc.h -include zipvfs/zipl_iomap.c -DHAVE_ZIP_H -I. tcc.c -ldl -lm -lpthread -o ztcc
 or for win32
-gcc.exe (yourflags) -m32 -include tcc.h -include zipvfs/zipl_iomap.c -DHAVE_ZIP_H -I. tcc.c -o ztcc.exe
+  gcc.exe (yourflags) -m32 -include tcc.h -include zipvfs/zipl_iomap.c -DHAVE_ZIP_H -I. tcc.c -o ztcc.exe
 
 * Includes ZIP
 Zip the necessary includes into a file named includes.zip. Put it in the same directory as ztcc and ztcc will find it.
@@ -25,30 +25,31 @@ If you want to use a different file, you can use ztcc -Bzip:myfile.zip
 * Make ztcc selfcontaining
 Simply append the zip to the exe, adjust-sfx index of zip.
 
-cat ztcc.exe MYZIPFILE.zip > fattcc.exe 
-zip -A fattcc.exe
+  cat ztcc.exe MYZIPFILE.zip > fattcc.exe 
+  zip -A fattcc.exe
 
 * What about libtcc.dll?
 Well, you can build it zip enabled and give the zip name via tcc_set_lib_path("zip:path_to_my_zipfile")
 
 * How compatible is it to older/newer tcc versions
 It should work for all versions, that rely on only those four fileio functions.
-- tested backward to mob tinycc-ac9eeea   from Dez-06 2022: ok
-- tested latest      mob tinycc-a46372e   from Jun-06 2023: ok
+  - tested backward to mob tinycc-ac9eeea   from Dez-06 2022: ok
+  - tested latest      mob tinycc-a46372e   from Jun-06 2023: ok
 
 Are there prebuilt packages?
 Yes, I upload source&binary (linx x86_64 and win32) packages on a regular basis, when tcc mob updates.
 
 The source packages are derived from the normal tcc mob, so build with
 
-configure
-make
-make ziptcc
-make pkg
+  configure
+  make
+  make ziptcc
+  make pkg
 
 This will produce a subdir called zipvfs-0.40.0 with all necessary files
 
 Win32:
-use win32/build-zipvfs-win32.bat -t 32 -c path-to-your-gcc\gcc.exe -i installdir (default: ziptcc-0.40.0)
+use 
+  win32/build-zipvfs-win32.bat -t 32 -c path-to-your-gcc\gcc.exe -i installdir (default: ziptcc-0.40.0)
 This will produce a subdir called zipvfs-0.40.0 with all necessary files
 
