@@ -44,7 +44,6 @@ static char zipfileopen [1024]={0}; // contains name of zipfile if given
 static struct zip_t *zip=NULL;
 static int exitreg =0;
 
-PUB_FUNC void tcc_memcheck(int d);
 void cleanupzip () {
     // close zip
     if(zip!=NULL) {
