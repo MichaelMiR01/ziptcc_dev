@@ -40,7 +40,19 @@ switch(e){
 };
 
 static char zipfilename [1024]={0}; // contains name of zipfile if given
+static char zipfileopen [1024]={0}; // contains name of zipfile if given
+static struct zip_t *zip=NULL;
+static int exitreg =0;
 
+PUB_FUNC void tcc_memcheck(int d);
+void cleanupzip () {
+    // close zip
+    if(zip!=NULL) {
+        //printf("Closing zip...\n");
+        zip_close(zip);zip=NULL;
+    }
+    //printf("Exiting...\n");
+}
 #define eerror(c) printf("%s: (%u) %s\n", c, eerrcode, eerrstr(eerrcode))
 char * normalize_path(char* pwd, const char * src, char* res) {
 	size_t res_len;
@@ -159,31 +171,57 @@ EFILE* zip_fopen (const char* filename) {
     struct EFILE_S buf = {0};
     EFILE* e;
     int sz=0;
-    struct zip_t *zip;
-    char* ptr=NULL;
-    char* selfpath;
     
+    char* ptr=NULL;
+    static char* selfpath;
+    if (exitreg==0) {//register on_exit to close zip if neccessary
+        atexit(cleanupzip);
+        exitreg++;
+        strcpy(zipfilename,"includes.zip");
+        selfpath=print_argv0();
+    }
+
     if(tcc_state!=NULL) {
         //printf("Libpath is %s\n",tcc_state->tcc_lib_path);
         if (ptr=strstr(tcc_state->tcc_lib_path,"zip:")) {
             strncpy(zipfilename,ptr+4,strlen(tcc_state->tcc_lib_path)-4);
-        } else {
-            strcpy(zipfilename,"includes.zip");
+            if(!fexists(zipfilename)) {// get back last opened zipfile if any
+                strcpy(zipfilename,zipfileopen);
+            }
+        } 
+    }
+    
+    if(strcmp(zipfilename,zipfileopen)!=0) {
+        if(zip!=NULL) {//reopen zip
+            zip_close(zip);zip=NULL;zipfileopen[0]=0;
         }
     }
-    if(strlen(zipfilename)==0) strcpy(zipfilename,"includes.zip");
     
-   //printf("ZIPpath is %s\n",zipfilename);
-   selfpath=print_argv0();
-   if(strlen(zipfilename)>0&&fexists(zipfilename)) {
-       //printf("Opening  %s\n",zipfilename);
-        zip = zip_open(zipfilename, 0, 'r');
-    } else if(fexists(selfpath)) {
-        zip = zip_open(selfpath, 0, 'r');
-    } else {
-        zip=NULL;
+    
+    if (zip==NULL) {// try opening zip or self
+       if(strlen(zipfilename)>0&&fexists(zipfilename)) {
+            //printf("Opening  %s\n",zipfilename);
+            if(zip!=NULL) zip_close(zip);
+            zip = zip_open(zipfilename, 0, 'r');
+            if(zip==NULL) {
+                return NULL;
+            } 
+            strcpy(zipfileopen,zipfilename);
+        } else if(fexists(selfpath)) {
+            //printf("Opening  %s\n",selfpath);
+            if(zip!=NULL) zip_close(zip);
+            zip = zip_open(selfpath, 0, 'r');
+            if(zip==NULL) {// self seems not to be a valid zip, so drop this
+                selfpath="";
+                return NULL;
+            } 
+            strcpy(zipfilename,selfpath);
+            strcpy(zipfileopen,zipfilename);
+        } else {
+            zip=NULL;
+        }
     }
-    tcc_free(selfpath);
+
     zipopen++;
     //printf("searching %s %d\n",filename,zipopen);
     if(zip==NULL) {
@@ -197,7 +235,7 @@ EFILE* zip_fopen (const char* filename) {
         if(r<0) {
             //printf("file not found %s as %s\n",filename,filenameok);
             zip_entry_close(zip);
-            zip_close(zip);
+            //zip_close(zip);zip=NULL;
             return NULL;
         }
         {
@@ -205,9 +243,9 @@ EFILE* zip_fopen (const char* filename) {
             sz=zip_entry_extract(zip, on_extract, &buf);
             sz=buf.size;
             if(sz<=0) {
-                //printf ("Extraction failed for %s\n",filenameok);
+                printf ("Extraction failed for %s\n",filenameok);
                 zip_entry_close(zip);
-                zip_close(zip);
+                //zip_close(zip);zip=NULL;
                 return NULL;
             }
             e = (EFILE*)tcc_malloc(sizeof *e);
@@ -216,17 +254,19 @@ EFILE* zip_fopen (const char* filename) {
             e->pos = 0;
             e->end = sz;
             e->size = sz;
+            tcc_free(buf.data);
         }
         zip_entry_close(zip);
     }
-    zip_close(zip);
-    
+    //zip_close(zip);zip=NULL;
     return e;
 }
 
 int zip_fclose (EFILE* file) {
-    tcc_free(file->data);
-    tcc_free(file);
+    if(file!=NULL) {
+        tcc_free(file->data);
+        tcc_free(file);
+    }
 }
 
 long int etell(EFILE* e){

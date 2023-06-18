@@ -191,7 +191,6 @@ int callOpen(const char * path, int flags, va_list args) {
 int t_open(const char *_Filename,int _OpenFlag,...) {
     EFILE* chan;
     char buf[BUF_SIZE];
-    
     buf[0] = '\0';
     char* rdmode="RDONLY";
     int readmode=1;
@@ -245,14 +244,8 @@ int t_open(const char *_Filename,int _OpenFlag,...) {
         //_Filename = "stdin";
         return -1;
     } else {
-        //path = Tcl_NewStringObj(_Filename,-1);
-        //Tcl_IncrRefCount(path);
-        //chan = Tcl_FSOpenFileChannel(NULL,path, buf, 0);
-        //Tcl_DecrRefCount(path);
         chan= zip_fopen(_Filename);
         if (chan==NULL) {
-            //
-            
             //printf("Searching file on disk %s\n",_Filename);
             va_list args;
             va_start(args, _OpenFlag);

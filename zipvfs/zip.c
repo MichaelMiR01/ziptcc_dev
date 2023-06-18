@@ -8,6 +8,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 #define __STDC_WANT_LIB_EXT1__ 1
+#undef free                                                             
 
 #include <errno.h>
 #include <sys/stat.h>
@@ -68,7 +69,7 @@
 #define CLEANUP(ptr)                                                           \
   do {                                                                         \
     if (ptr) {                                                                 \
-      tcc_free((void *)ptr);                                                       \
+      free((void *)ptr);                                                       \
       ptr = NULL;                                                              \
     }                                                                          \
   } while (0)
