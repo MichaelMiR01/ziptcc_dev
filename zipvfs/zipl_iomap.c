@@ -173,6 +173,8 @@ static inline char *_strcatn(char *buf, const char *s)
     return buf;
 }
 
+TCC_SEM(static tcc_io_sem);
+
 int callOpen(const char * path, int flags, va_list args) {
     #undef open
   if (flags & (O_CREAT))
@@ -244,7 +246,9 @@ int t_open(const char *_Filename,int _OpenFlag,...) {
         //_Filename = "stdin";
         return -1;
     } else {
+        WAIT_SEM(&tcc_io_sem);
         chan= zip_fopen(_Filename);
+        POST_SEM(&tcc_io_sem);
         if (chan==NULL) {
             //printf("Searching file on disk %s\n",_Filename);
             va_list args;
