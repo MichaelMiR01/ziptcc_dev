@@ -85,6 +85,8 @@ char * normalize_path(char* pwd, const char * src, char* res) {
 				const char * slash = (char*)memrchr(res, '/', res_len);
 				if (slash != NULL) {
 					res_len = slash - res;
+				} else {
+				    res_len=0;
 				}
 				continue;
 			}
@@ -109,6 +111,7 @@ char * normalize_path(char* pwd, const char * src, char* res) {
 		res[res_len++] = '/';
 	}
 	res[res_len] = '\0';
+	
 	return res;
 }
 
