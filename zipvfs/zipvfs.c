@@ -70,6 +70,11 @@ char * normalize_path(char* pwd, const char * src, char* res) {
 		res_len = pwd_len;
 	} else {
 		res_len = 0;
+		// handle absolute path case
+		if(src[0]=='/') {
+		    res[0]=src[0];
+		    res_len++;
+		}
 	}
 	
 	for (ptr = src; ptr < end; ptr=next+1) {
@@ -100,7 +105,7 @@ char * normalize_path(char* pwd, const char * src, char* res) {
 			continue;
 		}
 
-		if (res_len >= 1)
+		if ((res_len >= 1) && (!IS_DIRSEP(res[res_len-1]))) 
 			res[res_len++] = '/';
 		
 		memcpy(&res[res_len], ptr, len);
@@ -233,6 +238,8 @@ EFILE* zip_fopen (const char* filename) {
     {
         char filenameok[1024];
         normalize_path("",filename,filenameok);
+        if(IS_ABSPATH(filenameok)) return NULL;
+        //printf("normalize %s -> %s\n",filename,filenameok);
         int r=zip_entry_open(zip, filenameok);
         if(r<0) {
             //printf("file not found %s as %s\n",filename,filenameok);
