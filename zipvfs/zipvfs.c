@@ -316,3 +316,71 @@ long zip_fread (EFILE* stream, char* _DstBuf, unsigned int _MaxCharCount) {
     return _MaxCharCount;
 
 }
+
+int zip_stat(const char *entryname, struct stat *st) {
+  size_t entrylen = 0;
+  mz_zip_archive *pzip = NULL;
+  mz_zip_archive_file_stat stats;
+
+  if (!zip) {
+    return -1;
+  }
+  if (!entryname) {
+    return -1;
+  }
+    if(IS_ABSPATH(entryname)) {
+        //
+        return -1;
+    }
+
+  entrylen = strlen(entryname);
+  if (entrylen == 0) {
+    return -1;
+  }
+
+  if (zip->entry.name) {
+    CLEANUP(zip->entry.name);
+  }
+#ifdef ZIP_RAW_ENTRYNAME
+  zip->entry.name = STRCLONE(entryname);
+#else
+  zip->entry.name = zip_strrpl(entryname, entrylen, '\\', '/');
+#endif
+
+  if (!zip->entry.name) {
+    // Cannot parse zip entry name
+    return -1;
+  }
+
+  pzip = &(zip->archive);
+  if (pzip->m_zip_mode == MZ_ZIP_MODE_READING) {
+    zip->entry.index = (ssize_t)mz_zip_reader_locate_file(
+        pzip, zip->entry.name, NULL, 0);
+    if (zip->entry.index < (ssize_t)0) {
+      goto cleanup;
+    }
+
+    if (!mz_zip_reader_file_stat(pzip, (mz_uint)zip->entry.index, &stats)) {
+      goto cleanup;
+    }
+
+    /*zip->entry.comp_size = stats.m_comp_size;
+    zip->entry.uncomp_size = stats.m_uncomp_size;
+    zip->entry.uncomp_crc32 = stats.m_crc32;
+    zip->entry.offset = stats.m_central_dir_ofs;
+    zip->entry.header_offset = stats.m_local_header_ofs;
+    zip->entry.method = stats.m_method;
+    zip->entry.external_attr = stats.m_external_attr;*/
+    //zip->entry.m_time = stats.m_time;
+    st->st_size=stats.m_uncomp_size;
+    st->st_dev=stats.m_local_header_ofs;
+    st->st_ino=stats.m_central_dir_ofs;
+    return 0;
+  }
+
+cleanup:
+  CLEANUP(zip->entry.name);
+  return -1;
+}
+
+    

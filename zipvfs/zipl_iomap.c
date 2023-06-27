@@ -29,10 +29,12 @@ void tcc_list_symbols(TCCState *s, void *ctx,
 
 #include <fcntl.h>
 #include "zipvfs.c"
+
 #define open t_open
 #define read t_read
 #define lseek t_lseek
 #define close t_close
+#define stat(a,b) t_stat(a,b)
 
 #define MAXCHAN 128
 #define CHANBASE 10000
@@ -293,6 +295,7 @@ long t_lseek(int _FileHandle,long _Offset,int _Origin) {
 int t_read(int _FileHandle,void *_DstBuf,unsigned int _MaxCharCount) {
     //
     EFILE* chan;
+    struct stat st;
     chan=_int2chan(_FileHandle);
     if(chan==NULL) {
         #undef read
@@ -302,5 +305,18 @@ int t_read(int _FileHandle,void *_DstBuf,unsigned int _MaxCharCount) {
     return zip_fread(chan, (char * )_DstBuf, _MaxCharCount);
 
 } 
+
+int t_stat(const char *entryname, struct stat *st) { 
+    //
+    char filenameok[1024];
+    normalize_path("",entryname,filenameok);
+    int r=zip_stat(filenameok,st);
+    if(r) {
+        #undef stat
+        return stat(entryname,st);
+        #define stat(a,b) t_stat(a,b)
+    }
+    return r;
+}
 
 #endif // HAVE_TCL_H
