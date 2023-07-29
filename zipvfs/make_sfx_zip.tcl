@@ -110,5 +110,7 @@ proc make_sfx_zip { zipfile outfile sfx_stubfile} {
 
 if { $::argc > 2 } {
     make_sfx_zip {*}$::argv
+} else {
+	puts "./make_sfx_zip.tcl includes.zip ntcc _ztcc"
 }
 #./make_sfx_zip.tcl includes.zip ntcc _ztcc

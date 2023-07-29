@@ -12,7 +12,57 @@
 
 #include "zip.h"
 #include "zip.c"
-#define CONFIG_TCCDIR "."
+
+#if defined LIBTCC_AS_DLL && !defined CONFIG_TCCDIR
+static HMODULE tcc_module;
+BOOL WINAPI DllMain (HINSTANCE hDll, DWORD dwReason, LPVOID lpReserved)
+{
+    if (DLL_PROCESS_ATTACH == dwReason)
+        tcc_module = hDll;
+    return TRUE;
+}
+#else
+#define tcc_module NULL /* NULL means executable itself */
+#endif
+
+#ifndef CONFIG_TCCDIR
+/* on win32, we suppose the lib and includes are at the location of 'tcc.exe' */
+static inline char *config_tccdir_w32(char *path)
+{
+    char temp[1024];
+    char try[1024];
+    char *p;
+    int c;
+    GetModuleFileName(tcc_module, path, MAX_PATH);
+    p = tcc_basename(normalize_slashes(strlwr(path)));
+    if (p > path)
+        --p;
+
+    *p = 0;
+
+    return path;
+}
+#define CONFIG_TCCDIR config_tccdir_w32(alloca(MAX_PATH))
+#endif
+
+char* print_argv0() {
+    char cmdline[2048];
+#ifndef _WIN32
+    int pid = getpid();
+    char fname[2048];
+    snprintf(fname, sizeof fname, "/proc/%d/cmdline", pid);
+    FILE *fp = fopen(fname,"r");
+    fgets(cmdline, sizeof cmdline, fp);
+    // the arguments are in cmdline
+#else
+    strncpy(cmdline,__argv[0],256);
+#endif
+    /* Make a copy of the string. */
+    //printf("%s\n", cmdline);
+    /* Clean up. */
+    return tcc_strdup(cmdline);
+
+}
 
 // Error Handling taken from c-embed
 
@@ -142,24 +192,21 @@ int fexists(const char *fname)
     //printf("Error: %d %s\n",errno,strerror(errno));
     return 0;
 }
-
-char* print_argv0() {
-    char cmdline[2048];
-#ifndef _WIN32
-    int pid = getpid();
-    char fname[2048];
-    snprintf(fname, sizeof fname, "/proc/%d/cmdline", pid);
-    FILE *fp = fopen(fname,"r");
-    fgets(cmdline, sizeof cmdline, fp);
-    // the arguments are in cmdline
-#else
-    strncpy(cmdline,__argv[0],256);
-#endif
-    /* Make a copy of the string. */
-    //printf("%s\n", cmdline);
-    /* Clean up. */
-    return tcc_strdup(cmdline);
-
+/* extract the path of a file */
+char *tcc_pathname(const char *name)
+{
+    
+    char *parent = NULL;
+    char *p = strchr(name, 0);
+    int i=strlen(name);
+    while (p > name && !IS_DIRSEP(p[-1])) {
+        --p;
+        --i;
+    }
+    parent = tcc_strdup(name);  
+    *(parent+i)=0;
+   // printf("Base of %s is %s (%d)\n",name,parent,i);
+    return parent;
 }
 
 static size_t on_extract(void *arg, uint64_t offset, const void *data, size_t size) {
@@ -178,14 +225,53 @@ EFILE* zip_fopen (const char* filename) {
     struct EFILE_S buf = {0};
     EFILE* e;
     int sz=0;
-    
     char* ptr=NULL;
     static char* selfpath;
+    static char* self;
+
     if (exitreg==0) {//register on_exit to close zip if neccessary
         atexit(cleanupzip);
         exitreg++;
-        strcpy(zipfilename,"includes.zip");
-        selfpath=print_argv0();
+        selfpath=CONFIG_TCCDIR;
+        self=print_argv0();
+        
+        if(!fexists(self)) {
+            // try selfpath/self
+           // printf("Searching %s for self\n",selfpath);
+            strncpy(zipfilename, selfpath, sizeof(zipfilename)-1);
+            strcat(zipfilename, "/");
+            strcat(zipfilename,self);
+           // printf("Lookingup %s for self\n",zipfilename);
+            if(fexists(zipfilename)) {
+                self=tcc_strdup(zipfilename);
+            } else {
+               // printf("failed...\n");
+            }
+        } 
+        if(!fexists(self)) {
+           // printf("Searching %s for tcc.exe\n",selfpath);
+            strncpy(zipfilename, selfpath, sizeof(zipfilename)-1);
+            strcat(zipfilename,"/tcc.exe");
+            if(fexists(zipfilename)) {
+                self=tcc_strdup(zipfilename);
+               // printf("found...\n");
+            } 
+        }
+        
+       // printf("Searching %s for includes\n",selfpath);
+        strncpy(zipfilename, selfpath, sizeof(zipfilename)-1);
+        strcat(zipfilename, "/includes.zip");
+
+        if(!fexists(zipfilename)) {
+            strncpy(zipfilename, tcc_pathname(self), sizeof(zipfilename)-1);
+           // printf("Searching selfpath %s for includes\n",zipfilename);
+            strcat(zipfilename, "includes.zip");
+        }
+            
+        
+       // printf("config_tccdir %s\n",CONFIG_TCCDIR);
+       // printf("zipfilename  %s\n",zipfilename);
+       // printf("self  %s\n",self);
     }
 
     if(tcc_state!=NULL) {
@@ -204,25 +290,24 @@ EFILE* zip_fopen (const char* filename) {
         }
     }
     
-    
     if (zip==NULL) {// try opening zip or self
        if(strlen(zipfilename)>0&&fexists(zipfilename)) {
-            //printf("Opening  %s\n",zipfilename);
+           // printf("Opening  zip %s\n",zipfilename);
             if(zip!=NULL) zip_close(zip);
             zip = zip_open(zipfilename, 0, 'r');
             if(zip==NULL) {
                 return NULL;
             } 
             strcpy(zipfileopen,zipfilename);
-        } else if(fexists(selfpath)) {
-            //printf("Opening  %s\n",selfpath);
+        } else if(fexists(self)) {
+           // printf("Opening self %s\n",self);
             if(zip!=NULL) zip_close(zip);
-            zip = zip_open(selfpath, 0, 'r');
+            zip = zip_open(self, 0, 'r');
             if(zip==NULL) {// self seems not to be a valid zip, so drop this
-                selfpath="";
+                self="";
                 return NULL;
             } 
-            strcpy(zipfilename,selfpath);
+            strcpy(zipfilename,self);
             strcpy(zipfileopen,zipfilename);
         } else {
             zip=NULL;

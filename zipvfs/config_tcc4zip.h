@@ -26,7 +26,7 @@
     ":" ALSO_TRIPLET(CONFIG_SYSROOT "/usr/local/include") \
     ":" ALSO_TRIPLET(CONFIG_SYSROOT CONFIG_USR_INCLUDE)
 #endif
-#define CONFIG_TCCDIR "."
+/*#define CONFIG_TCCDIR "."*/
 
 /* library search paths */
 # ifdef _WIN32
