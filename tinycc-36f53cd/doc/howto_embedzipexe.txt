@@ -1,0 +1,94 @@
+ Embed a zip file of media within an ogre application executable
+
+    Cookbook
+     » 
+    Snippets
+     » 
+    Materials and Textures
+     » 
+    Merge exe with a media zip
+
+Table of contents
+
+            PE Files
+            Zip Files
+            Putting it all together
+            What you need
+            Instructions
+            Even Less Files
+            Untested ideas
+            Inspiration
+
+There are some handy properties of executable files and zip files which allow an executable to be merged with a zip, so that it runs like normal but the Ogre resource system thinks it's an archive. Using two open source tools we can create an ogre application which contains all of it's required media (textures, shaders, models, etc) embedded within the exe. No changes to source code are needed.
+PE Files
+
+PE (Portable Executable) is a modified version of the COFF file format. It was introduced with Windows NT 3.1 and has been used since then for executables and dlls in all Windows operating systems.
+A PE file contains (amongst other things) one or more sections and a section table. The section table tells windows which parts of the exe should be loaded into memory.
+Any data added onto the end of an exe isn't loaded into memory because the section table doesn't list it.
+Zip Files
+
+A zip file is an archive format which can store both compressed and uncompressed data. Each entry in a zip is preceded by a file header. There is nothing special at the beginning of a zip, the directory table of a zip and magic id used to identify a file as a zip is actually stored at the end of the file. Any extra data added to the beginning of a zip won't stop it from being usable. You can append a zip to the end of any file, and standard unzipping software like Winrar, 7Zip and others will be able to read the resulting file as if it was a zip, the excess data at the beginning is ignored. The Zzip library used by Ogre has a little trouble with this though, the directory table contains offsets from the front of the file to each entry. Other software seems to correct this with a bias based on the expected and actual file size, but Zzip won't open it correctly.
+Putting it all together
+
+So, we have an executable format which doesn't mind extra data on the end, and an archive format which doesn't mind extra data on the front. By combining these together, we can create an executable which reads itself as an archive. If all you want to do is open it with winrar (or similar), you can just use the command prompt append copy command to merge them. But to be zzip compatible, we need to do things in a slightly more complicated way.
+What you need
+
+Two programs are needed:
+
+zip.exe
+    This is a standard zip executable, such as the win32 version found here: ftp://tug.ctan.org/tex-archive/tools/zip/info-zip/WIN32/zip232xN.zip 
+zzipsetstub.exe
+    zzipsetstub comes as a single C file in the zzip source package in the test directory. You can get the zzip package from: http://sourceforge.net/project/showfiles.php?group_id=6389&package_id=35602&release_id=649833 
+
+
+
+Instructions
+
+    Compile zzipsetstub.exe. This is easy, it doesn't use the zzip lib or any other dependencies. If Visual Studio is in the path, you can just type: 
+
+cl zzipsetstub.c
+
+    Compile your ogre application. I'll call it demo.exe.
+    Create a zip containing just the application in uncompressed form. This means the zip directory is correctly biased. Instead of adding a zip to the end of an exe, we have added the exe as the first entry in the zip. Each entry we add after this will go on the end, it maintains order. (-0 is the zip option to store without compression) 
+
+
+
+zip -0 demo.zip demo.exe
+
+    Now add all required resources to the zip. I used a flat directory called media which held all the files (textures, meshes, materials, etc). (-9 is the zip option to perform best compression. -j strips directory info) 
+
+
+
+zip -9 -j demo.zip media\*.*
+
+    We now have demo.zip which contains everything we need. But there's a problem. Although the first entry is an uncompressed exe, every entry is preceded by a small zip file header. Since we don't need to extract the exe from the zip, and invalid entries are ignored, we can use zzipsetstub. It takes a zip and another file, and writes the second file directly over the top of the beginning of the zip. Effectively this shuffles the exe down to overwrite the zip entry header. The earlier step of adding the exe to the zip was just to reserve enough space at the beginning so zzipsetstub wouldn't wipe anything important. 
+
+
+
+zzipsetstub demo.zip demo.exe
+
+    Rename demo.zip to something else, like demo_merged.exe.
+    Edit your resources.cfg to contain: 
+
+
+
+[General]
+Zip=./demo_merged.exe
+
+    The Ogre application will now try to load itself as a zip file.
+    If you want, all these steps could be done automatically as a post build event in visual studio. 
+
+
+
+Even Less Files
+
+Combine this with hard coding your cfg files (add resource paths and choose renderer manually) and statically linking with plugins and you should be able to get an entire ogre application down to just a single (rather big) file.
+Untested ideas
+
+This should work on dlls too, so you could write a plugin for another program (winamp visualiser, etc) which contains everything it needs in a single dll.
+Or rename the .exe to .scr and handle a few command line options to have a self contained screen saver.
+Inspiration
+
+These steps are based on the instructions in the zzip manual on how to create self extracting zips.
+http://zziplib.sourceforge.net/sfx-make.html
+
