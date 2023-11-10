@@ -1,6 +1,0 @@
-making the ZIP file self-extracting * type in the following commands Code:
-
-cat ztcc.exe MYZIPFILE.zip > fattcc.exe 
-zip -A fattcc.exe
-
-thats all
