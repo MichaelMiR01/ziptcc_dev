@@ -37,7 +37,8 @@ You can build it zip enabled and give the zip name via tcc_set_lib_path("zip:pat
 ## How compatible is it to older/newer tcc versions
 It should work for all versions, that rely on only those four fileio functions.
     - tested backward to mob tinycc-ac9eeea   from Dez-06 2022: ok
-    - tested latest      mob tinycc-a46372e   from Jun-06 2023: ok
+
+I try to update to latest mob from time to time and make a release, when tcc 0.9.28 is final
 
 ## Are there prebuilt packages?
 Yes, I upload source&binary (linx x86_64 and win32) packages on a regular basis, when tcc mob updates.
