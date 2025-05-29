@@ -480,6 +480,7 @@ int zip_fclose (EFILE* file) {
         tcc_free(file->data);
         tcc_free(file);
     }
+    return 0;
 }
 
 long int etell(EFILE* e){
